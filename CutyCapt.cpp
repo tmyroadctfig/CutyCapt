@@ -36,7 +36,12 @@
 #include <QByteArray>
 #include <QNetworkRequest>
 #include <QNetworkProxy>
+#include <string>
+#include <vector>
+#include <iostream>
 #include "CutyCapt.hpp"
+
+using namespace std;
 
 #if QT_VERSION >= 0x040600 && 0
 #define CUTYCAPT_SCRIPT 1
@@ -430,8 +435,52 @@ CaptHelp(void) {
     "");
 }
 
+int mainImpl(int argc, char *argv[], QApplication *app, bool showHelp);
+
+void batchMode(QApplication *app) {
+  while (true) {
+    vector<string> options;
+    
+    while (true) {
+      string option;
+      getline(cin, option);
+      
+      if (cin.bad() || cin.eof()) {
+         return;
+      }
+      
+      if (option == "GO") {
+        break;
+      } else if (option == "QUIT") {
+        return;
+      } else {
+        options.push_back(option);
+      }
+    }
+    
+    char *argv[options.size() + 1];
+    int index = 1;
+    vector<string>::iterator i;
+    for (i = options.begin() ; i < options.end(); i++) {
+	  string s = *i;
+      argv[index] = const_cast<char *>(s.c_str());
+	  index++;
+    }
+    
+    int result = mainImpl(options.size() + 1, argv, app, false);
+	
+	if (result == 0) {
+	  cout << "OK" << endl;
+	} else if (result == EXIT_FAILURE) {
+      cout << "FAIL: bad arguments" << endl;
+    } else {
+      cout << "FAIL: unknown" << endl;
+    }
+  }
+}
+
 int
-main(int argc, char *argv[]) {
+mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
 
   int argHelp = 0;
   int argDelay = 0;
@@ -460,7 +509,6 @@ main(int argc, char *argv[]) {
 
   CutyCapt::OutputFormat format = CutyCapt::OtherFormat;
 
-  QApplication app(argc, argv, true);
   CutyPage page;
   
   QNetworkAccessManager::Operation method =
@@ -477,9 +525,13 @@ main(int argc, char *argv[]) {
 
     const char* s = argv[ax];
     const char* value;
-
+	
     // boolean options
-    if (strcmp("--silent", s) == 0) {
+    if (strcmp("--batch-mode", s) == 0) {
+      batchMode(app);
+      return 0;
+
+    } else if (strcmp("--silent", s) == 0) {
       argSilent = 1;
       continue;
 
@@ -646,10 +698,10 @@ main(int argc, char *argv[]) {
 #endif
 
     } else if (strncmp("--app-name", s, nlen) == 0) {
-      app.setApplicationName(value);
+      app->setApplicationName(value);
 
     } else if (strncmp("--app-version", s, nlen) == 0) {
-      app.setApplicationVersion(value);
+      app->setApplicationVersion(value);
 
     } else if (strncmp("--body-base64", s, nlen) == 0) {
       body = QByteArray::fromBase64(value);
@@ -701,7 +753,9 @@ main(int argc, char *argv[]) {
   }
 
   if (argUrl == NULL || argOut == NULL || argHelp) {
-      CaptHelp();
+      if (showHelp) {
+        CaptHelp();
+	  }
       return EXIT_FAILURE;
   }
 
@@ -727,12 +781,12 @@ main(int argc, char *argv[]) {
                 !!argInsecure, !!argSmooth, argPageWidth, argPageHeight,
                 QRectF(argMarginLeft, argMarginTop, argMarginRight, argMarginBottom));
 
-  app.connect(&page,
+  app->connect(&page,
     SIGNAL(loadFinished(bool)),
     &main,
     SLOT(DocumentComplete(bool)));
 
-  app.connect(page.mainFrame(),
+  app->connect(page.mainFrame(),
     SIGNAL(initialLayoutCompleted()),
     &main,
     SLOT(InitialLayoutCompleted()));
@@ -773,13 +827,13 @@ main(int argc, char *argv[]) {
   // initial load unless some JavaScript has been executed.
   page.mainFrame()->evaluateJavaScript(QString(""));
 
-  app.connect(page.mainFrame(),
+  app->connect(page.mainFrame(),
     SIGNAL(javaScriptWindowObjectCleared()),
     &main,
     SLOT(JavaScriptWindowObjectCleared()));
 #endif
 
-  app.connect(page.networkAccessManager(),
+  app->connect(page.networkAccessManager(),
     SIGNAL(sslErrors(QNetworkReply*, QList<QSslError>)),
     &main,
     SLOT(handleSslErrors(QNetworkReply*, QList<QSslError>)));
@@ -789,5 +843,13 @@ main(int argc, char *argv[]) {
   else
     page.mainFrame()->load(req, method);
 
-  return app.exec();
+  return app->exec();
+}
+
+int
+main(int argc, char *argv[]) {
+
+  QApplication app(argc, argv, true);
+ 
+  mainImpl(argc, argv, &app, true); 
 }
