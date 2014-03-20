@@ -843,7 +843,13 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
   else
     page.mainFrame()->load(req, method);
 
-  return app->exec();
+  int code = app->exec();
+  
+  page.mainFrame()->disconnect();
+  page.networkAccessManager()->disconnect();
+  page.disconnect();
+  
+  return code;
 }
 
 int
