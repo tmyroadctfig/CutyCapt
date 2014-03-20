@@ -196,6 +196,7 @@ CutyCapt::CutyCapt(CutyPage* page, const QString& output, int delay, OutputForma
   mMargins = margins;
   mSawInitialLayout = false;
   mSawDocumentComplete = false;
+  mRendered = false;
   mFormat = format;
   mScriptProp = scriptProp;
   mScriptCode = scriptCode;
@@ -251,19 +252,16 @@ CutyCapt::TryDelayedRender() {
   }
 
   saveSnapshot();
-  QApplication::exit();
 }
 
 void
 CutyCapt::Timeout() {
   saveSnapshot();
-  QApplication::exit();
 }
 
 void
 CutyCapt::Delayed() {
   saveSnapshot();
-  QApplication::exit();
 }
 
 void
@@ -273,6 +271,10 @@ CutyCapt::handleSslErrors(QNetworkReply* reply, QList<QSslError> errors) {
   } else {
     // TODO: what to do here instead of hanging?
   }
+}
+
+bool CutyCapt::isRendered() {
+  return mRendered;
 }
 
 void
@@ -360,6 +362,7 @@ CutyCapt::saveSnapshot() {
       image.save(mOutput, format);
     }
   };
+  mRendered = true;
 }
 
 void
@@ -435,7 +438,7 @@ CaptHelp(void) {
     "");
 }
 
-int mainImpl(int argc, char *argv[], QApplication *app, bool showHelp);
+int mainImpl(int argc, char *argv[], QApplication* app, bool showHelp);
 
 void batchMode(QApplication *app) {
   while (true) {
@@ -517,8 +520,8 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
   QNetworkRequest req;
   CutyNetworkAccessManager manager;
   
-  page.setNetworkAccessManager(&manager);
-
+  page.setNetworkAccessManager(&manager);  
+  
   // Parse command line parameters
   for (int ax = 1; ax < argc; ++ax) {
     size_t nlen;
@@ -527,11 +530,7 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
     const char* value;
 	
     // boolean options
-    if (strcmp("--batch-mode", s) == 0) {
-      batchMode(app);
-      return 0;
-
-    } else if (strcmp("--silent", s) == 0) {
+    if (strcmp("--silent", s) == 0) {
       argSilent = 1;
       continue;
 
@@ -569,7 +568,7 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
     }
 
     nlen = value++ - s;
-
+	
     // --name=value options
     if (strncmp("--url", s, nlen) == 0) {
       argUrl = value;
@@ -843,19 +842,24 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
   else
     page.mainFrame()->load(req, method);
 
-  int code = app->exec();
+  while (!main.isRendered()) {
+    app->processEvents(QEventLoop::AllEvents, 100);
+  }
   
+  main.disconnect();
   page.mainFrame()->disconnect();
   page.networkAccessManager()->disconnect();
   page.disconnect();
+  app->disconnect();
   
-  return code;
+  app->processEvents(QEventLoop::AllEvents, 100);
+  
+  return 0;
 }
 
 int
 main(int argc, char *argv[]) {
 
   QApplication app(argc, argv, true);
- 
-  mainImpl(argc, argv, &app, true); 
+  batchMode(&app); 
 }

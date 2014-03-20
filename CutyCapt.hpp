@@ -63,6 +63,8 @@ public:
 		   int pageWidth,
 		   int pageHeight,
            QRectF margins);
+		   
+  bool isRendered();
 
 private slots:
   void DocumentComplete(bool ok);
@@ -77,6 +79,7 @@ private:
   void saveSnapshot();
   bool mSawInitialLayout;
   bool mSawDocumentComplete;
+  bool mRendered;
 
 protected:
   QString      mOutput;
