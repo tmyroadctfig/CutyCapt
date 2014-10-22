@@ -26,7 +26,9 @@
 #include <QApplication>
 #include <QtWebKit>
 #include <QtGui>
+#ifndef QT_NO_SVG
 #include <QSvgGenerator>
+#endif
 
 #if QT_VERSION < 0x050000
 #include <QPrinter>
@@ -51,7 +53,9 @@ using namespace std;
   Q_IMPORT_PLUGIN(qjpeg)
   Q_IMPORT_PLUGIN(qgif)
   Q_IMPORT_PLUGIN(qtiff)
+#ifndef QT_NO_SVG
   Q_IMPORT_PLUGIN(qsvg)
+#endif
   Q_IMPORT_PLUGIN(qmng)
   Q_IMPORT_PLUGIN(qico)
 #endif
@@ -61,7 +65,9 @@ static struct _CutyExtMap {
   const char* extension;
   const char* identifier;
 } const CutyExtMap[] = {
+#ifndef QT_NO_SVG
   { CutyCapt::SvgFormat,         ".svg",        "svg"   },
+#endif
   { CutyCapt::PdfFormat,         ".pdf",        "pdf"   },
   { CutyCapt::PsFormat,          ".ps",         "ps"    },
   { CutyCapt::InnerTextFormat,   ".txt",        "itext" },
@@ -299,6 +305,7 @@ CutyCapt::saveSnapshot() {
   mPage->setViewportSize( mainFrame->contentsSize() );
 
   switch (mFormat) {
+#ifndef QT_NO_SVG
     case SvgFormat: {
       QSvgGenerator svg;
       svg.setFileName(mOutput);
@@ -308,6 +315,7 @@ CutyCapt::saveSnapshot() {
       painter.end();
       break;
     }
+#endif
     case PdfFormat:
     case PsFormat: {
       QPrinter printer;
