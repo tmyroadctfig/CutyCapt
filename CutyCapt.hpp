@@ -62,7 +62,9 @@ public:
            bool smooth,
 		   int pageWidth,
 		   int pageHeight,
-           QRectF margins);
+           QRectF margins,
+           int dpi,
+           int printerMode);
 		   
   bool isRendered();
 
@@ -94,4 +96,6 @@ protected:
   int          mPageWidth;
   int          mPageHeight;
   QRectF       mMargins;
+  int          mDpi;
+  int          mPrinterMode;
 };

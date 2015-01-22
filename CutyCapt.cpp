@@ -191,7 +191,8 @@ CutyPage::setAttribute(QWebSettings::WebAttribute option,
 
 CutyCapt::CutyCapt(CutyPage* page, const QString& output, int delay, OutputFormat format,
                    const QString& scriptProp, const QString& scriptCode, bool insecure,
-                   bool smooth, int pageWidth, int pageHeight, QRectF margins) {
+                   bool smooth, int pageWidth, int pageHeight, QRectF margins, int dpi,
+                   int printerMode) {
   mPage = page;
   mOutput = output;
   mDelay = delay;
@@ -200,6 +201,8 @@ CutyCapt::CutyCapt(CutyPage* page, const QString& output, int delay, OutputForma
   mPageWidth = pageWidth;
   mPageHeight = pageHeight;
   mMargins = margins;
+  mDpi = dpi;
+  mPrinterMode = printerMode;
   mSawInitialLayout = false;
   mSawDocumentComplete = false;
   mRendered = false;
@@ -318,7 +321,7 @@ CutyCapt::saveSnapshot() {
 #endif
     case PdfFormat:
     case PsFormat: {
-      QPrinter printer;
+      QPrinter printer((QPrinter::PrinterMode) mPrinterMode);
       if (mPageWidth != 0 && mPageHeight != 0) {
         printer.setPaperSize(QSizeF(mPageWidth, mPageHeight), QPrinter::Point);
       } else {
@@ -326,6 +329,9 @@ CutyCapt::saveSnapshot() {
       }      
       if (mMargins.left() >= 0 && mMargins.top() >= 0 && mMargins.right() >= 0 && mMargins.bottom() >= 0) {
         printer.setPageMargins(mMargins.left(), mMargins.top(), mMargins.right(), mMargins.bottom(), QPrinter::Point);
+      }
+      if (mDpi > 0) {
+        printer.setResolution(mDpi);
       }
       printer.setOutputFileName(mOutput);
 #ifdef Q_WS_MACX
@@ -418,6 +424,8 @@ CaptHelp(void) {
     "  --margin-top=<pts>             Sets the top margin in points (default: unknown)\n"
     "  --margin-bottom=<pts           Sets the right margin in points (default: unknown)\n"
     "  --margin-right=<pts>           Sets the bottom margin in points (default: unknown)\n"
+    "  --dpi=<dpi>                    Sets the DPI setting to use for PDF/PS (default: unknown)\n"
+    "  --printerMode=<mode>           Sets the printer mode to use for PDF/PS (default: 0 - Screen resolution)\n"
 #if QT_VERSION >= 0x040500
     "  --print-backgrounds=<on|off>   Backgrounds in PDF/PS output (default: off)  \n"
     "  --zoom-factor=<float>          Page zoom factor (default: no zooming)       \n"
@@ -514,6 +522,8 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
   int argMarginTop = -1;
   int argMarginRight = -1;
   int argMarginBottom = -1;
+  int argDpi = -1;
+  int argPrinterMode = 0;
 
   const char* argUrl = NULL;
   const char* argUserStyle = NULL;
@@ -626,6 +636,14 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
     } else if (strncmp("--margin-bottom", s, nlen) == 0) {
       // TODO: see above
       argMarginBottom = (unsigned int)atoi(value);
+
+    } else if (strncmp("--dpi", s, nlen) == 0) {
+      // TODO: see above
+      argDpi = (unsigned int)atoi(value);
+
+    } else if (strncmp("--printerMode", s, nlen) == 0) {
+      // TODO: see above
+      argPrinterMode = (unsigned int)atoi(value);
 
     } else if (strncmp("--out", s, nlen) == 0) {
       argOut = value;
@@ -792,7 +810,7 @@ mainImpl(int argc, char *argv[], QApplication *app, bool showHelp) {
 
   CutyCapt main(&page, argOut, argDelay, format, scriptProp, scriptCode,
                 !!argInsecure, !!argSmooth, argPageWidth, argPageHeight,
-                QRectF(argMarginLeft, argMarginTop, argMarginRight, argMarginBottom));
+                QRectF(argMarginLeft, argMarginTop, argMarginRight, argMarginBottom), argDpi, argPrinterMode);
 
   app->connect(&page,
     SIGNAL(loadFinished(bool)),
